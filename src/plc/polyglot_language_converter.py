@@ -8,6 +8,8 @@ from typing import Literal, TypedDict
 
 import aiohttp
 
+from src.plc.file_utils import split_into_chunks
+
 # %%
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -76,58 +78,11 @@ instructions provided earlier:
 Reply with only the converted C# code. Do not add any explanations or comments about 
 the conversion process."""
 
-# %%
-MAX_CHUNK_SIZE = 8192
-
 
 # %%
 class Message(TypedDict):
     role: Literal["user", "assistant"]
     content: str
-
-
-# %%
-def split_into_chunks(content, max_chunk_size=MAX_CHUNK_SIZE):
-    chunks = []
-    current_chunk = ""
-    for line in content.split("\n"):
-        if len(current_chunk) + len(line) + 1 > max_chunk_size and (
-            line.startswith("# %%") or line.startswith("// %%")
-        ):
-            chunks.append(current_chunk.strip())
-            current_chunk = ""
-        current_chunk += line + "\n"
-        if len(current_chunk) >= max_chunk_size:
-            chunks.append(current_chunk.strip())
-            current_chunk = ""
-    if current_chunk:
-        chunks.append(current_chunk.strip())
-    return chunks
-
-
-# %%
-TEST_CONTENT = """// %%
-import java.util.ArrayList;
-import java.util.List;
-
-// %% [markdown] lang="de" tags=["subslide"]
-// # Test auf Deutsch
-
-// %% [markdown] lang="en" tags=["subslide"]
-// ## Test in English
-
-// %%
-public class Test {
-    public static void main(String[] args) {
-        List<String> list = new ArrayList<>();
-        list.add("Hello, world!");
-        System.out.println(list);
-    }
-}
-"""
-
-# %%
-split_into_chunks(TEST_CONTENT, 50)
 
 
 # %%
@@ -173,7 +128,7 @@ async def send_to_openrouter(
 
 
 # %%
-def set_up_database(conn, cursor):
+def set_up_database(cursor):
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS converted_files (
@@ -183,15 +138,14 @@ def set_up_database(conn, cursor):
         )
         """
     )
-    conn.commit()
 
 
 # %%
-def create_database(db_path=DB_PATH):
+def create_database(db_path: Path = DB_PATH):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    set_up_database(conn, cursor)
-    return conn
+    set_up_database(cursor)
+    return conn, cursor
 
 
 # %%
@@ -204,7 +158,7 @@ def has_file_been_processed(cursor, file_path, model):
 
 
 # %%
-async def process_file(file_path, model, model_suffix, cursor, conn, reprocess):
+async def process_file(file_path, model, model_suffix, cursor, conn, reprocess=False):
     if has_file_been_processed(cursor, file_path, model) and not reprocess:
         print(f"Skipping {file_path} for model {model} (already processed)")
         return
@@ -263,10 +217,11 @@ async def process_file(file_path, model, model_suffix, cursor, conn, reprocess):
 
 
 # %%
-async def process_files(max_files=None, glob_pattern="*.java", reprocess=False):
+async def process_files(
+    max_files=None, glob_pattern="*.java", db_path: Path = DB_PATH, reprocess=False
+):
     num_files_processed = 0
-    conn = create_database()
-    cursor = conn.cursor()
+    conn, cursor = create_database(db_path)
 
     for file_path in DIRECTORY_PATH.rglob(glob_pattern):
         if max_files and num_files_processed >= max_files:
