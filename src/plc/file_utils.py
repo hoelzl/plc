@@ -8,7 +8,7 @@ def split_into_chunks(content: str, max_chunk_size: int = MAX_CHUNK_SIZE) -> lis
 
 
 def split_into_possible_chunks(content: str) -> list[str]:
-    possible_chunks = []
+    possible_chunks: list = []
     current_chunk = ""
     lines = content.splitlines(keepends=True)  # Keep original line endings
 
