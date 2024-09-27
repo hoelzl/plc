@@ -10,7 +10,7 @@ from plc.llm_provider import LlmProvider
 from plc.message import Message
 from plc.model import Model
 from plc.prog_lang_spec import prog_lang_messages, prog_lang_specs
-from src.plc.file_utils import split_into_chunks
+from plc.file_utils import split_into_chunks
 
 
 @define

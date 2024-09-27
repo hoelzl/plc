@@ -1,6 +1,6 @@
 import pytest
 
-from src.plc.file_utils import split_into_chunks
+from plc.file_utils import split_into_chunks
 
 
 def test_single_small_chunk():
