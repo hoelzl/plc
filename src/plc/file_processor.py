@@ -1,18 +1,17 @@
 import re
-import traceback
 from pathlib import Path
 from sqlite3 import Connection
 from typing import List
 
-from attrs import define, Factory
+from attrs import Factory, define
 from loguru import logger
 
 from plc.defaults import default_convert_chunk_prompt, default_initial_prompt
+from plc.file_utils import split_into_chunks
 from plc.llm_provider import LlmProvider
 from plc.message import Message
 from plc.model import Model
 from plc.prog_lang_spec import prog_lang_conversions, prog_lang_specs
-from plc.file_utils import split_into_chunks
 
 
 @define
@@ -23,7 +22,7 @@ class FileProcessor:
     from_slug: str
     to_slug: str
     conn: Connection
-    max_chunk_size: int = 8192
+    max_chunk_size: int = 4096
     initial_prompt: str = default_initial_prompt
     convert_chunk_prompt: str = default_convert_chunk_prompt
     reprocess: bool = False
@@ -82,11 +81,7 @@ class FileProcessor:
             # understood the task
             ack_message = await self.send_messages_to_llm()
             logger.trace(f"{self.model.slug} replied with {ack_message[:80]}...")
-            try:
-                self.add_conversion_example_messages()
-            except Exception as e:
-                logger.error(f"Caught exception while adding example messages: {e}")
-                logger.error(traceback.format_exc())
+            self.add_conversion_example_messages()
 
             for index, chunk in enumerate(chunks):
                 logger.info(
@@ -160,6 +155,8 @@ class FileProcessor:
         return converted_chunk
 
     def clean_chunk(self, chunk: str) -> str:
+        if chunk is None:
+            raise ValueError("Trying to clean invalid chunk.")
         # Remove enclosing tags if present
         pattern = rf"^```{self.to_slug}\n(.*)\n```$"
         match = re.match(pattern, chunk, re.DOTALL)
@@ -175,6 +172,8 @@ class FileProcessor:
         converted_chunk = await self.llm_provider.send_message(
             self.messages, self.model
         )
+        if converted_chunk is None:
+            raise ValueError(f"{self.model.slug} returned None as converted chunk.")
         reply_message = Message(role="assistant", content=converted_chunk)
         self.messages.append(reply_message)
         logger.trace(f"Appended reply message: {reply_message}")
@@ -201,6 +200,8 @@ class FileProcessor:
         self.conn.commit()
 
     def write_converted_chunks_to_file(self, converted_chunks: List[str]):
+        if any(c is None for c in converted_chunks):
+            raise ValueError("Bad converted chunk detected. Not writing file")
         converted_content = "\n".join(converted_chunks)
         outfile_path = self.output_file_path
         with outfile_path.open("w", encoding="utf-8") as f:

@@ -51,3 +51,15 @@ async def test_process_posts_expected_messages(file_processor_stub, tmp_path):
         role="user", content="convert " + FILE_PROCESSOR_TEST_TExT
     )
     assert file_processor_stub.messages[4] == expected_message
+
+
+def test_write_converted_chunks_writes_valid_chunks(file_processor_stub):
+    file_processor_stub.write_converted_chunks_to_file(["Foo", "Bar", "Baz"])
+    assert file_processor_stub.output_file_path.exists()
+    assert file_processor_stub.output_file_path.read_text() == "Foo\nBar\nBaz"
+
+
+def test_write_converted_chunks_doesnt_write_none(file_processor_stub):
+    with pytest.raises(ValueError):
+        file_processor_stub.write_converted_chunks_to_file(["Foo", None, "Bar"])
+    assert file_processor_stub.output_file_path.exists() is False

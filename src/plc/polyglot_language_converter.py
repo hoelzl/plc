@@ -98,7 +98,7 @@ class PolyglotLanguageConverter:
                     ).process()
                     for model in self.models
                 ]
-                await asyncio.gather(*tasks)
+                await asyncio.gather(*tasks, return_exceptions=True)
 
     @staticmethod
     def skip_file_because_of_name(file_path):
