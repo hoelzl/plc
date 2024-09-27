@@ -1,252 +1,115 @@
-# %%
 import asyncio
-import json
-import os
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Literal, TypedDict
+from sqlite3 import Connection
+from typing import List
 
-import aiohttp
+from attrs import Factory, define
 
-from src.plc.file_utils import split_into_chunks
-
-# %%
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-API_KEY = os.getenv("OPENROUTER_API_KEY")
-
-# %%
-DIRECTORY_PATH = Path(os.getcwd()).parent / "conversion"
-DB_PATH = Path("converted_java_files.db")
-
-# %%
-MODELS = [
-    ("anthropic/claude-3.5-sonnet:beta", "claude"),
-    ("qwen/qwen-2.5-72b-instruct", "qwen"),
-    ("google/gemini-pro-1.5-exp", "gemini"),
-    ("openai/chatgpt-4o-latest", "chatgpt"),
-]
-
-# %%
-INITIAL_PROMPT = """Convert the following notebook in jupytext format from Java, 
-Python or C++ to C#:
-
-1. Maintain the same number of markdown cells and preserve their contents, except for 
-obvious language-specific conversions from the original programming language to "C#".
-2. Maintain the same number of code cells, unless a utility class or other code is 
-needed in one language but not the other. In such cases, add or remove the necessary 
-code cells.
-3. Preserve all cell tags and other metadata exactly as they are in the input file.
-4. Convert the original code in each code cell to equivalent C# code, following the 
-syntax and conventions of C#.
-5. In particular:
-   - Convert getters and setters to C# properties, and ensure that the code is 
-   idiomatic C#.
-   - Convert Java-specific constructs like `ArrayList` to their C# equivalents like 
-   `List<T>`.
-   - Convert Python-specific constructs like list comprehensions to equivalent C# code.
-   - Convert C++-specific constructs like `std::vector` to their C# equivalents like 
-   `List<T>`.
-   - Ensure that the converted code is properly indented and follows C# naming 
-   conventions and brace style.
-   - Ensure that the resulting notebook uses the C# comment character `//` for comments.
-   - Convert the IJava magic command `%maven` to the C# magic command `#r` with a 
-   corresponding NuGet package.
-   - When a notebook contains a cell with `import static 
-   testrunner.TestRunner.runTests;` assume that a file `XunitTestRunner.cs` exists, 
-   defining a class `XunitTestRunner` with a static method `RunTests` and import this 
-   class using the `#load` magic.
-   - Use xUnit.net for assertions and test discovery.
-   - Convert all JUnit tests to xUnit.net tests.
-   - Convert all Catch2 tests to xUnit.net tests.
-   - Convert all Mockito mocks to Moq mocks.
-6. Ensure that no additional output or comments are generated during the conversion 
-process.
-7. If any additional imports or utility classes are required for the converted C# 
-code, add them as separate code cells with appropriate tags and metadata.
-8. Do not modify the order or structure of the markdown and code cells, 
-unless absolutely necessary for the conversion.
-
-Please confirm that you understand these instructions before we begin the conversion 
-process."""
-
-# %%
-CONVERT_CHUNK_PROMPT = """Convert the following chunk of code to C#, following the 
-instructions provided earlier:
-
-{chunk}
-
-Reply with only the converted C# code. Do not add any explanations or comments about 
-the conversion process."""
+from plc.defaults import (DIRECTORY_PATH, default_convert_chunk_prompt,
+                          default_initial_prompt, default_models, )
+from plc.file_processor import FileProcessor
+from plc.llm_provider import LlmProvider
+from plc.model import Model
+from plc.open_router_provider import OpenRouterProvider
+from plc.prog_lang_spec import prog_lang_specs
 
 
-# %%
-class Message(TypedDict):
-    role: Literal["user", "assistant"]
-    content: str
+@define
+class PolyglotLanguageConverter:
+    llm_provider: LlmProvider
+    models: List[Model] = Factory(list)
+    from_lang: str = "java"
+    to_lang: str = "csharp"
+    initial_prompt: str = ""
+    convert_chunk_prompt: str = ""
+    db_path: Path | str = ":memory:"
+    directory_path: Path = DIRECTORY_PATH
 
+    @property
+    def glob_pattern(self):
+        return prog_lang_specs[self.from_lang].glob_pattern
 
-# %%
-async def send_to_openrouter(
-    session: aiohttp.ClientSession,
-    messages: list[Message],
-    model: str,
-    max_retries: int = 3,
-    retry_delay: int = 5,
-) -> str:
-    headers = {"Authorization": f"Bearer {API_KEY}"}
+    @property
+    def from_suffix(self):
+        return prog_lang_specs[self.from_lang].suffix
 
-    data = json.dumps(
-        {
-            "model": model,
-            "messages": messages,
-        }
-    )
+    @property
+    def to_suffix(self):
+        return prog_lang_specs[self.to_lang].suffix
 
-    for attempt in range(max_retries):
+    @contextmanager
+    def connect_to_database(self) -> Connection:
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
         try:
-            async with session.post(
-                url=OPENROUTER_API_URL, headers=headers, data=data
-            ) as response:
-                if response.status == 200:
-                    response_json = await response.json()
-                    return response_json["choices"][0]["message"]["content"]
-                else:
-                    response_text = await response.text()
-                    raise RuntimeError(f"Failed to convert chunk: {response_text}")
-        except Exception as e:
-            if attempt < max_retries - 1:
-                print(
-                    f"Attempt {attempt + 1} failed. Retrying in {retry_delay} "
-                    f"seconds..."
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS converted_files (
+                    file_name TEXT,
+                    model TEXT,
+                    from_lang TEXT,
+                    to_lang TEXT,
+                    PRIMARY KEY (file_name, model, from_lang, to_lang)
                 )
-                await asyncio.sleep(retry_delay)
-            else:
-                raise RuntimeError(
-                    f"Failed to convert chunk after {max_retries} attempts: {str(e)}"
-                )
-    raise RuntimeError("This should never happen")
-
-
-# %%
-def set_up_database(cursor):
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS converted_files (
-            file_name TEXT,
-            model TEXT,
-            PRIMARY KEY (file_name, model)
-        )
-        """
-    )
-
-
-# %%
-def create_database(db_path: Path = DB_PATH):
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    set_up_database(cursor)
-    return conn, cursor
-
-
-# %%
-def has_file_been_processed(cursor, file_path, model):
-    cursor.execute(
-        "SELECT file_name FROM converted_files WHERE file_name = ? AND model = ?",
-        (file_path.name, model),
-    )
-    return cursor.fetchone() is not None
-
-
-# %%
-async def process_file(file_path, model, model_suffix, cursor, conn, reprocess=False):
-    if has_file_been_processed(cursor, file_path, model) and not reprocess:
-        print(f"Skipping {file_path} for model {model} (already processed)")
-        return
-
-    with file_path.open("r", encoding="utf-8") as f:
-        file_content = f.read()
-    print(f"File content: {file_content[:160]}... ({len(file_content)} characters)")
-
-    chunks = split_into_chunks(file_content)
-
-    converted_chunks = []
-    async with aiohttp.ClientSession() as session:
-        # Initial conversation
-        messages = [
-            {"role": "user", "content": INITIAL_PROMPT},
-        ]
-        response = await send_to_openrouter(session, messages, model)
-        messages.append({"role": "assistant", "content": response})
-
-        for i, chunk in enumerate(chunks):
-            print(
-                f"Processing chunk {i + 1} of file {file_path.name} with model {model}"
+                """
             )
-            try:
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": CONVERT_CHUNK_PROMPT.format(chunk=chunk),
-                    }
-                )
-                converted_chunk = await send_to_openrouter(session, messages, model)
-                converted_chunks.append(converted_chunk)
-                messages.append({"role": "assistant", "content": converted_chunk})
-            except Exception as e:
-                print(
-                    f"Failed to convert chunk {i + 1} of file {file_path.name} with "
-                    f"model {model} after 3 attempts: {str(e)}"
-                )
-                return
+            cursor.close()
+            yield conn
+        finally:
+            conn.close()
 
-    if len(converted_chunks) == len(chunks):
-        converted_content = "\n\n".join(converted_chunks)
+    async def process_files(
+        self,
+        max_files: int = None,
+        glob_pattern: str = "*.java",
+        reprocess: bool = False,
+    ):
+        num_files_processed = 0
+        with self.connect_to_database() as conn:
+            for file_path in self.directory_path.rglob(glob_pattern):
+                if max_files and num_files_processed >= max_files:
+                    print(f"Exit: {num_files_processed} files processed.")
+                    break
 
-        outfile_path = file_path.with_suffix(f".{model_suffix}.cs")
+                if self.skip_file_because_of_name(file_path):
+                    continue
 
-        with outfile_path.open("w", encoding="utf-8") as f:
-            f.write(converted_content)
+                print(f"Processing {file_path}")
+                num_files_processed += 1
 
-        cursor.execute(
-            "INSERT OR REPLACE INTO converted_files (file_name, model) VALUES (?, ?)",
-            (file_path.name, model),
+                tasks = [
+                    FileProcessor(
+                        file_path=file_path,
+                        llm_provider=self.llm_provider,
+                        model=model,
+                        from_lang=self.from_lang,
+                        to_lang=self.to_lang,
+                        conn=conn,
+                        initial_prompt=self.initial_prompt,
+                        convert_chunk_prompt=self.convert_chunk_prompt,
+                        reprocess=reprocess,
+                    ).process()
+                    for model in self.models
+                ]
+                await asyncio.gather(*tasks)
+
+    @staticmethod
+    def skip_file_because_of_name(file_path):
+        return (
+            "old" in str(file_path).lower()
+            or "backup" in str(file_path).lower()
+            or ".ipynb_checkpoints" in str(file_path).lower()
         )
-        conn.commit()
-    else:
-        print(f"Conversion incomplete for {file_path.name} with model {model}")
 
 
-# %%
-async def process_files(
-    max_files=None, glob_pattern="*.java", db_path: Path = DB_PATH, reprocess=False
-):
-    num_files_processed = 0
-    conn, cursor = create_database(db_path)
+if __name__ == "__main__":
+    converter = PolyglotLanguageConverter(
+        llm_provider=OpenRouterProvider(),
+        models=default_models,
+        initial_prompt=default_initial_prompt,
+        convert_chunk_prompt=default_convert_chunk_prompt,
+    )
 
-    for file_path in DIRECTORY_PATH.rglob(glob_pattern):
-        if max_files and num_files_processed >= max_files:
-            print(f"Exit: {num_files_processed} files processed.")
-            break
-
-        if "old" in str(file_path).lower() or "backup" in str(file_path).lower():
-            continue
-
-        if should_skip_file(file_path):
-            print(f"Skipping {file_path} (indicated by file name)")
-            continue
-
-        print(f"Processing {file_path}")
-        num_files_processed += 1
-
-        tasks = [
-            process_file(file_path, model, model_suffix, cursor, conn, reprocess)
-            for model, model_suffix in MODELS
-        ]
-        await asyncio.gather(*tasks)
-
-    conn.close()
-
-
-# %%
-def should_skip_file(file_path):
-    return ".ipynb_checkpoints" in str(file_path).lower()
+    asyncio.run(converter.process_files())
