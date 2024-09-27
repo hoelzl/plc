@@ -3,7 +3,7 @@ from pathlib import Path
 
 from plc.model import Model
 
-DIRECTORY_PATH = Path(os.getcwd()).parent / "conversion"
+DIRECTORY_PATH = Path(os.getcwd())
 DB_PATH = Path("converted_java_files.db")
 default_models = [
     Model(id="anthropic/claude-3.5-sonnet:beta", slug="claude"),
@@ -12,12 +12,12 @@ default_models = [
     Model(id="openai/chatgpt-4o-latest", slug="chatgpt"),
 ]
 default_initial_prompt = """Convert the following notebook in jupytext format from 
-Java, Python or C++ to C#:
+{from_lang} to {to_lang}:
 
-1. Maintain the same number of markdown cells and preserve their contents, except for obvious language-specific conversions from the original programming language to "C#".
+1. Maintain the same number of markdown cells and preserve their contents, except for obvious language-specific conversions from {from_lang} language to {to_lang}.
 2. Maintain the same number of code cells, unless a utility class or other code is needed in one language but not the other. In such cases, add or remove the necessary code cells.
 3. Preserve all cell tags and other metadata exactly as they are in the input file.
-4. Convert the original code in each code cell to equivalent C# code, following the syntax and conventions of C#.
+4. Convert the original code in each code cell to equivalent {to_lang} code, following the syntax and conventions of {to_lang}.
 5. In particular:
    - Convert getters and setters to C# properties, and ensure that the code is idiomatic C#.
    - Convert Java-specific constructs like `ArrayList` to their C# equivalents like `List<T>`.
@@ -32,12 +32,14 @@ Java, Python or C++ to C#:
    - Convert all Catch2 tests to xUnit.net tests.
    - Convert all Mockito mocks to Moq mocks.
 6. Ensure that no additional output or comments are generated during the conversion process.
-7. If any additional imports or utility classes are required for the converted C# code, add them as separate code cells with appropriate tags and metadata.
+7. If any additional imports or utility classes are required for the converted {to_lang} code, add them as separate code cells with appropriate tags and metadata.
 8. Do not modify the order or structure of the markdown and code cells, unless absolutely necessary for the conversion.
 
 Please confirm that you understand these instructions before we begin the conversion process."""
-default_convert_chunk_prompt = """Convert the following chunk of code to C#, following the instructions provided earlier:
+
+
+default_convert_chunk_prompt = """Convert the following chunk of code to {to_lang}, following the instructions provided earlier:
 
 {chunk}
 
-Reply with only the converted C# code. Do not add any explanations or comments about the conversion process."""
+Reply with only the converted {to_lang} code. Do not add any explanations or comments about the conversion process."""

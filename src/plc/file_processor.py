@@ -1,3 +1,5 @@
+import re
+import traceback
 from pathlib import Path
 from sqlite3 import Connection
 from typing import List
@@ -9,7 +11,7 @@ from plc.defaults import default_convert_chunk_prompt, default_initial_prompt
 from plc.llm_provider import LlmProvider
 from plc.message import Message
 from plc.model import Model
-from plc.prog_lang_spec import prog_lang_messages, prog_lang_specs
+from plc.prog_lang_spec import prog_lang_conversions, prog_lang_specs
 from plc.file_utils import split_into_chunks
 
 
@@ -18,9 +20,10 @@ class FileProcessor:
     file_path: Path
     llm_provider: LlmProvider
     model: Model
-    from_lang: str
-    to_lang: str
+    from_slug: str
+    to_slug: str
     conn: Connection
+    max_chunk_size: int = 8192
     initial_prompt: str = default_initial_prompt
     convert_chunk_prompt: str = default_convert_chunk_prompt
     reprocess: bool = False
@@ -29,11 +32,19 @@ class FileProcessor:
 
     @property
     def from_suffix(self) -> str:
-        return prog_lang_specs[self.from_lang].suffix
+        return prog_lang_specs[self.from_slug].suffix
 
     @property
     def to_suffix(self) -> str:
-        return prog_lang_specs[self.to_lang].suffix
+        return prog_lang_specs[self.to_slug].suffix
+
+    @property
+    def from_lang(self) -> str:
+        return prog_lang_specs[self.from_slug].name
+
+    @property
+    def to_lang(self) -> str:
+        return prog_lang_specs[self.to_slug].name
 
     async def process(self):
         if self.has_file_been_processed() and not self.reprocess:
@@ -50,7 +61,7 @@ class FileProcessor:
             f"characters)"
         )
 
-        chunks = split_into_chunks(file_content)
+        chunks = split_into_chunks(file_content, max_chunk_size=self.max_chunk_size)
         converted_chunks = await self.convert_chunks(chunks)
 
         if len(converted_chunks) == len(chunks):
@@ -71,7 +82,11 @@ class FileProcessor:
             # understood the task
             ack_message = await self.send_messages_to_llm()
             logger.trace(f"{self.model.slug} replied with {ack_message[:80]}...")
-            self.add_conversion_example_messages()
+            try:
+                self.add_conversion_example_messages()
+            except Exception as e:
+                logger.error(f"Caught exception while adding example messages: {e}")
+                logger.error(traceback.format_exc())
 
             for index, chunk in enumerate(chunks):
                 logger.info(
@@ -82,36 +97,60 @@ class FileProcessor:
                 converted_chunks.append(converted_chunk)
             return converted_chunks
         except Exception as e:
-            logger.warning(f"Failed converting chunks: {e}")
+            logger.warning(
+                f"Failed while converting chunks with model {self.model.slug}: {e}"
+            )
             return []
 
     def build_initial_message(self):
         return [
-            Message(role="user", content=self.initial_prompt),
+            Message(
+                role="user",
+                content=self.initial_prompt.format(
+                    from_lang=self.from_lang, to_lang=self.to_lang
+                ),
+            ),
         ]
 
+    @logger.catch
     def add_conversion_example_messages(self):
+        logger.trace(f"From: {self.from_slug} to {self.to_slug}")
+        logger.trace(prog_lang_conversions[self.to_slug])
         self.messages.extend(
             (
                 Message(
                     role="user",
                     content=self.convert_chunk_prompt.format(
-                        chunk=prog_lang_messages[self.from_lang]
+                        chunk=prog_lang_conversions[self.from_slug],
+                        from_lang=self.from_lang,
+                        to_lang=self.to_lang,
                     ),
                 ),
-                Message(role="assistant", content=prog_lang_messages[self.to_lang]),
+                Message(
+                    role="assistant",
+                    content=prog_lang_conversions[self.to_slug],
+                ),
             )
         )
+        logger.trace(
+            f"Messages for {self.model.slug} after adding examples: {self.messages}"
+        )
 
+    @logger.catch
     async def convert_chunk(self, chunk, index) -> str:
         try:
-            self.messages.append(
-                Message(
-                    role="user",
-                    content=self.convert_chunk_prompt.format(chunk=chunk),
-                )
+            new_message = Message(
+                role="user",
+                content=self.convert_chunk_prompt.format(
+                    chunk=chunk, from_lang=self.from_lang, to_lang=self.to_lang
+                ),
             )
+            self.messages.append(new_message)
+            logger.trace(f"Added message: {new_message}")
             converted_chunk = await self.send_messages_to_llm()
+            logger.trace(f"Converted chunk: {converted_chunk}")
+            converted_chunk = self.clean_chunk(converted_chunk)
+
         except Exception as e:
             logger.info(
                 f"Failed to convert chunk {index + 1} of file {self.file_path.name} "
@@ -120,33 +159,49 @@ class FileProcessor:
             raise
         return converted_chunk
 
+    def clean_chunk(self, chunk: str) -> str:
+        # Remove enclosing tags if present
+        pattern = rf"^```{self.to_slug}\n(.*)\n```$"
+        match = re.match(pattern, chunk, re.DOTALL)
+        if match:
+            logger.info(f"Removing decoration from chunk for {self.model.slug}")
+            result = match.group(1).strip()
+            logger.trace(f"New chunk: {result}")
+            return result
+        return chunk
+
+    @logger.catch
     async def send_messages_to_llm(self):
         converted_chunk = await self.llm_provider.send_message(
             self.messages, self.model
         )
-        self.messages.append(Message(role="assistant", content=converted_chunk))
+        reply_message = Message(role="assistant", content=converted_chunk)
+        self.messages.append(reply_message)
+        logger.trace(f"Appended reply message: {reply_message}")
         return converted_chunk
 
     def has_file_been_processed(self) -> bool:
         cursor = self.conn.cursor()
         cursor.execute(
-            "SELECT file_name FROM converted_files WHERE file_name = ? AND model = ?",
-            (self.file_path.name, self.model.id),
+            "SELECT file_name FROM converted_files "
+            "WHERE file_name = ? AND model = ? AND from_lang = ? AND to_lang = ?",
+            (self.file_path.name, self.model.id, self.from_slug, self.to_slug),
         )
         return cursor.fetchone() is not None
 
     def note_file_processed(self):
         self.conn.cursor().execute(
             (
-                "INSERT OR REPLACE INTO converted_files (file_name, model)"
-                " VALUES (?, ?)"
+                "INSERT OR REPLACE INTO converted_files"
+                " (file_name, model, from_lang, to_lang)"
+                " VALUES (?, ?, ?, ?)"
             ),
-            (self.file_path.name, self.model.id),
+            (self.file_path.name, self.model.id, self.from_slug, self.to_slug),
         )
         self.conn.commit()
 
     def write_converted_chunks_to_file(self, converted_chunks: List[str]):
-        converted_content = "".join(converted_chunks)
+        converted_content = "\n".join(converted_chunks)
         outfile_path = self.output_file_path
         with outfile_path.open("w", encoding="utf-8") as f:
             f.write(converted_content)

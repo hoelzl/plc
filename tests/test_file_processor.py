@@ -2,7 +2,7 @@ import pytest
 
 from conftest import FILE_PROCESSOR_TEST_TExT
 from plc.message import Message
-from plc.prog_lang_spec import prog_lang_messages
+from plc.prog_lang_spec import prog_lang_conversions
 
 
 def test_output_file_path_is_correct(file_processor_stub):
@@ -38,11 +38,13 @@ async def test_process_posts_expected_messages(file_processor_stub, tmp_path):
     )
 
     expected_message = Message(
-        role="user", content="convert " + prog_lang_messages["java"]
+        role="user", content="convert " + prog_lang_conversions["java"]
     )
     assert file_processor_stub.messages[2] == expected_message
 
-    expected_message = Message(role="assistant", content=prog_lang_messages["csharp"])
+    expected_message = Message(
+        role="assistant", content=prog_lang_conversions["csharp"]
+    )
     assert file_processor_stub.messages[3] == expected_message
 
     expected_message = Message(

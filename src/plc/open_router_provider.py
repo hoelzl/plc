@@ -4,6 +4,7 @@ import os
 import aiohttp
 import attrs
 from attrs import define
+from loguru import logger
 
 from plc.message import Message
 from plc.model import Model
@@ -32,6 +33,10 @@ class OpenRouterProvider:
             ) as response:
                 if response.status == 200:
                     response_json = await response.json()
+                    logger.trace(
+                        f"Received response message "
+                        f"{response_json['choices'][0]['message']}"
+                    )
                     return response_json["choices"][0]["message"]["content"]
                 else:
                     response_text = await response.text()

@@ -7,8 +7,12 @@ from typing import List
 
 from attrs import Factory, define
 
-from plc.defaults import (DIRECTORY_PATH, default_convert_chunk_prompt,
-                          default_initial_prompt, default_models, )
+from plc.defaults import (
+    DIRECTORY_PATH,
+    default_convert_chunk_prompt,
+    default_initial_prompt,
+    default_models,
+)
 from plc.file_processor import FileProcessor
 from plc.llm_provider import LlmProvider
 from plc.model import Model
@@ -20,24 +24,25 @@ from plc.prog_lang_spec import prog_lang_specs
 class PolyglotLanguageConverter:
     llm_provider: LlmProvider
     models: List[Model] = Factory(list)
-    from_lang: str = "java"
-    to_lang: str = "csharp"
+    from_slug: str = "java"
+    to_slug: str = "csharp"
     initial_prompt: str = ""
     convert_chunk_prompt: str = ""
     db_path: Path | str = ":memory:"
     directory_path: Path = DIRECTORY_PATH
+    max_chunk_size: int = 8192
 
     @property
     def glob_pattern(self):
-        return prog_lang_specs[self.from_lang].glob_pattern
+        return prog_lang_specs[self.from_slug].glob_pattern
 
     @property
     def from_suffix(self):
-        return prog_lang_specs[self.from_lang].suffix
+        return prog_lang_specs[self.from_slug].suffix
 
     @property
     def to_suffix(self):
-        return prog_lang_specs[self.to_lang].suffix
+        return prog_lang_specs[self.to_slug].suffix
 
     @contextmanager
     def connect_to_database(self) -> Connection:
@@ -63,12 +68,11 @@ class PolyglotLanguageConverter:
     async def process_files(
         self,
         max_files: int = None,
-        glob_pattern: str = "*.java",
         reprocess: bool = False,
     ):
         num_files_processed = 0
         with self.connect_to_database() as conn:
-            for file_path in self.directory_path.rglob(glob_pattern):
+            for file_path in self.directory_path.rglob(self.glob_pattern):
                 if max_files and num_files_processed >= max_files:
                     print(f"Exit: {num_files_processed} files processed.")
                     break
@@ -84,9 +88,10 @@ class PolyglotLanguageConverter:
                         file_path=file_path,
                         llm_provider=self.llm_provider,
                         model=model,
-                        from_lang=self.from_lang,
-                        to_lang=self.to_lang,
+                        from_slug=self.from_slug,
+                        to_slug=self.to_slug,
                         conn=conn,
+                        max_chunk_size=self.max_chunk_size,
                         initial_prompt=self.initial_prompt,
                         convert_chunk_prompt=self.convert_chunk_prompt,
                         reprocess=reprocess,

@@ -52,7 +52,5 @@ executing
 $ tox
 ```
 
-from the project's root directory. Currently, Python versions 3.8 to 3.11
-are tested. Dependencies for `tox` are installed using `tox-conda`; remove the
-corresponding entry in the `tox.ini` file if you want to use `virtualenv`
-instead.
+from the project's root directory. Currently, Python versions 3.9 to 3.12
+are tested.

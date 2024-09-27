@@ -20,11 +20,10 @@ prog_lang_specs: dict[str, ProgLangSpec] = {
     ),
 }
 
-prog_lang_messages: dict[str, str] = {
+prog_lang_conversions: dict[str, str] = {
     "cpp": (
         "// j2 from 'macros.j2' import header\n"
-        '// {{ header("Funktionen in C++", '
-        '"Functions in C++") }}\n'
+        '// {{ header("Funktionen in C++", "Functions in C++") }}\n'
         '// %% [markdown] lang="de" tags=["slide"]\n'
         "//\n// Da C++ eine statisch getypte Sprache ist, müssen wir bei \n"
         "// der Definition einer Funktion Typen für ihre Parameter und ihr \n"
@@ -39,7 +38,7 @@ prog_lang_messages: dict[str, str] = {
         "void say_hi(std::str name) {\n"
         '    std::cout << "Hello," << name << "\\n";\n'
         "}\n\n"
-        "say_hi()",
+        "say_hi()"
     ),
     "csharp": (
         "// j2 from 'macros.j2' import header\n"
@@ -63,7 +62,7 @@ prog_lang_messages: dict[str, str] = {
         "    {\n"
         '        SayHi("World");\n'
         "    }\n"
-        "}\n",
+        "}\n"
     ),
     "java": (
         "// j2 from 'macros.j2' import header\n"
@@ -97,6 +96,6 @@ prog_lang_messages: dict[str, str] = {
         '# %% tags=["keep"]\n'
         "def say_hi(name):\n"
         '    print("Hello,", name)\n\n'
-        "say_hi()",
+        "say_hi()"
     ),
 }
