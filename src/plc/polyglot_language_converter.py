@@ -10,7 +10,7 @@ from attrs import Factory, define
 from plc.defaults import (
     DIRECTORY_PATH,
     default_convert_chunk_prompt,
-    default_initial_prompt,
+    default_initial_prompt_start,
     default_models,
 )
 from plc.file_processor import FileProcessor
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     converter = PolyglotLanguageConverter(
         llm_provider=OpenRouterProvider(),
         models=default_models,
-        initial_prompt=default_initial_prompt,
+        initial_prompt=default_initial_prompt_start,
         convert_chunk_prompt=default_convert_chunk_prompt,
     )
 

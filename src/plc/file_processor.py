@@ -3,10 +3,13 @@ from pathlib import Path
 from sqlite3 import Connection
 from typing import List
 
-from attrs import Factory, define
+from attrs import Factory, define, field
 from loguru import logger
 
-from plc.defaults import default_convert_chunk_prompt, default_initial_prompt
+from plc.defaults import (
+    default_convert_chunk_prompt,
+    get_initial_prompt,
+)
 from plc.file_utils import split_into_chunks
 from plc.llm_provider import LlmProvider
 from plc.message import Message
@@ -23,11 +26,15 @@ class FileProcessor:
     to_slug: str
     conn: Connection
     max_chunk_size: int = 4096
-    initial_prompt: str = default_initial_prompt
+    initial_prompt: str = field()
     convert_chunk_prompt: str = default_convert_chunk_prompt
     reprocess: bool = False
     messages: list[Message] = Factory(list)
     converted_chunks: list[str] = Factory(list)
+
+    @initial_prompt.default  # noqa
+    def _init_initial_prompt(self):
+        self.initial_prompt = get_initial_prompt(self.from_slug, self.to_slug)
 
     @property
     def from_suffix(self) -> str:
