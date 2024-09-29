@@ -57,6 +57,12 @@ from .polyglot_language_converter import PolyglotLanguageConverter
     type=int,
     help="Maximum size of each chunk sent to the LLM",
 )
+@click.option(
+    "--models",
+    default=None,
+    type=str,
+    help="Comma-separated list of model slugs to use (e.g., claude,qwen)",
+)
 def main(
     from_: str,
     to: str,
@@ -66,6 +72,7 @@ def main(
     dir_path: Path,
     log_level: str,
     max_chunk_size: int,
+    models: str | None,
 ):
     """Convert slides between programming languages using various AI models."""
 
@@ -84,9 +91,19 @@ def main(
     if dir_path is None:
         dir_path = Path.cwd()
 
+    if models:
+        selected_slugs = models.split(",")
+        selected_models = [
+            model for model in default_models if model.slug in selected_slugs
+        ]
+        if not selected_models:
+            raise ValueError(f"No valid models found for the specified slugs: {models}")
+    else:
+        selected_models = default_models
+
     converter = PolyglotLanguageConverter(
         llm_provider=OpenRouterProvider(),
-        models=default_models,
+        models=selected_models,
         from_slug=from_,
         to_slug=to,
         max_chunk_size=max_chunk_size,

@@ -173,7 +173,7 @@ def get_initial_prompt(from_lang: str, to_lang: str):
     return initial_prompt + language_specific + default_initial_prompt_end
 
 
-default_convert_chunk_prompt = """Convert the following chunk of code to {to_lang}, following the instructions provided earlier:
+default_convert_chunk_prompt = """Convert the following chunk of code from {from_lang} to {to_lang}, following the instructions provided earlier:
 
 {chunk}
 

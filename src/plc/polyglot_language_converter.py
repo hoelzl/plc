@@ -28,7 +28,7 @@ class PolyglotLanguageConverter:
     from_slug: str = "java"
     to_slug: str = "csharp"
     initial_prompt: str = ""
-    convert_chunk_prompt: str = ""
+    convert_chunk_prompt: str = default_convert_chunk_prompt
     db_path: Path | str = ":memory:"
     directory_path: Path = DIRECTORY_PATH
     max_chunk_size: int = 8192
