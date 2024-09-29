@@ -157,7 +157,10 @@ language_specific_instructions = {
     },
 }
 
-default_initial_prompt_end = """Please confirm that you understand these instructions before we begin the conversion process."""
+default_initial_prompt_end = """
+The following messages will contain notebooks for you to convert.
+
+Please confirm that you understand these instructions before we begin the conversion process."""
 
 
 def get_initial_prompt(from_lang: str, to_lang: str):
@@ -167,8 +170,7 @@ def get_initial_prompt(from_lang: str, to_lang: str):
     language_specific = language_specific_instructions[f"{from_lang}_to_{to_lang}"][
         "instructions"
     ]
-    final_prompt = default_initial_prompt_end
-    return initial_prompt + language_specific + final_prompt
+    return initial_prompt + language_specific + default_initial_prompt_end
 
 
 default_convert_chunk_prompt = """Convert the following chunk of code to {to_lang}, following the instructions provided earlier:

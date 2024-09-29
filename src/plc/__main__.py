@@ -5,11 +5,7 @@ from pathlib import Path
 import click
 from loguru import logger
 
-from plc.defaults import (
-    default_convert_chunk_prompt,
-    default_initial_prompt_start,
-    default_models,
-)
+from plc.defaults import default_models
 from plc.open_router_provider import OpenRouterProvider
 from .polyglot_language_converter import PolyglotLanguageConverter
 
@@ -94,8 +90,6 @@ def main(
         from_slug=from_,
         to_slug=to,
         max_chunk_size=max_chunk_size,
-        initial_prompt=default_initial_prompt_start,
-        convert_chunk_prompt=default_convert_chunk_prompt,
         db_path=db_path,
         directory_path=dir_path,
     )

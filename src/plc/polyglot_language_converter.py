@@ -12,6 +12,7 @@ from plc.defaults import (
     default_convert_chunk_prompt,
     default_initial_prompt_start,
     default_models,
+    get_initial_prompt,
 )
 from plc.file_processor import FileProcessor
 from plc.llm_provider import LlmProvider
@@ -31,6 +32,10 @@ class PolyglotLanguageConverter:
     db_path: Path | str = ":memory:"
     directory_path: Path = DIRECTORY_PATH
     max_chunk_size: int = 8192
+
+    def __attrs_post_init__(self):
+        if not self.initial_prompt:
+            self.initial_prompt = get_initial_prompt(self.from_slug, self.to_slug)
 
     @property
     def glob_pattern(self):

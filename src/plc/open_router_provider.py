@@ -34,8 +34,8 @@ class OpenRouterProvider:
                 if response.status == 200:
                     response_json = await response.json()
                     logger.trace(
-                        f"Received response message "
-                        f"{response_json['choices'][0]['message']}"
+                        f"Received response message from {model.slug}: "
+                        f"{response_json['choices'][0]['message']["content"]}"
                     )
                     return response_json["choices"][0]["message"]["content"]
                 else:
