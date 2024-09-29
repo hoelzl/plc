@@ -20,6 +20,7 @@ prog_lang_specs: dict[str, ProgLangSpec] = {
     ),
 }
 
+
 prog_lang_conversions: dict[str, str] = {
     "cpp": (
         "// j2 from 'macros.j2' import header\n"
@@ -34,11 +35,12 @@ prog_lang_conversions: dict[str, str] = {
         '// %% tags=["keep"]\n'
         "// #include <iostream>\n"
         "// #include <string>\n\n"
-        '// %% tags=["keep"]'
+        '// %% tags=["keep"]\n'
         "void say_hi(std::str name) {\n"
-        '    std::cout << "Hello," << name << "\\n";\n'
+        '    std::cout << "Hello," << name << "!\\n";\n'
         "}\n\n"
-        "say_hi()"
+        '// %% tags=["keep"]\n'
+        'say_hi("World")'
     ),
     "csharp": (
         "// j2 from 'macros.j2' import header\n"
@@ -52,17 +54,12 @@ prog_lang_conversions: dict[str, str] = {
         "// types for its parameters and result when defining a function.\n"
         '// %% tags=["keep"]\n'
         "using System;\n\n"
-        "class Program\n"
+        "static void SayHi(string name)\n"
         "{\n"
-        "    static void SayHi(string name)\n"
-        "    {\n"
-        '        Console.WriteLine($"Hello, {name}");\n'
-        "    }\n\n"
-        "    static void Main()\n"
-        "    {\n"
-        '        SayHi("World");\n'
-        "    }\n"
-        "}\n"
+        '    Console.WriteLine($"Hello, {name}!");\n'
+        "}\n\n"
+        '// %% tags=["keep"]\n'
+        'SayHi("World");'
     ),
     "java": (
         "// j2 from 'macros.j2' import header\n"
@@ -75,14 +72,11 @@ prog_lang_conversions: dict[str, str] = {
         "//\n// As Java is a statically typed language, we have to specify\n"
         "// types for its parameters and result when defining a function.\n"
         '// %% tags=["keep"]\n'
-        "public class Example {\n"
-        "    public static void sayHi(String name) {\n"
-        '        System.out.println("Hello, " + name);\n'
-        "    }\n\n"
-        "    public static void main(String[] args) {\n"
-        '        sayHi("World");\n'
-        "    }\n"
-        "}\n"
+        "public static void sayHi(String name) {\n"
+        '    System.out.println("Hello, " + name);\n'
+        "}\n\n"
+        '// %% tags=["keep"]\n'
+        'sayHi("World");'
     ),
     "python": (
         "# j2 from 'macros.j2' import header\n"
@@ -96,6 +90,7 @@ prog_lang_conversions: dict[str, str] = {
         '# %% tags=["keep"]\n'
         "def say_hi(name):\n"
         '    print("Hello,", name)\n\n'
-        "say_hi()"
+        '# %% tags=["keep"]\n'
+        'say_hi("world")'
     ),
 }
