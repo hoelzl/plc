@@ -166,7 +166,7 @@ class FileProcessor:
             else:
                 logger.trace(
                     f"Converted chunk from {self.model.slug}: "
-                    f"{converted_chunk[:240]}"
+                    f"{converted_chunk[:240]}..."
                 )
             converted_chunk = self.clean_chunk(converted_chunk)
 
@@ -211,7 +211,12 @@ class FileProcessor:
         cursor.execute(
             "SELECT file_name FROM converted_files "
             "WHERE file_name = ? AND model = ? AND from_lang = ? AND to_lang = ?",
-            (self.file_path.name, self.model.id, self.from_slug, self.to_slug),
+            (
+                str(self.file_path.absolute()),
+                self.model.id,
+                self.from_slug,
+                self.to_slug,
+            ),
         )
         return cursor.fetchone() is not None
 
@@ -222,7 +227,12 @@ class FileProcessor:
                 " (file_name, model, from_lang, to_lang)"
                 " VALUES (?, ?, ?, ?)"
             ),
-            (self.file_path.name, self.model.id, self.from_slug, self.to_slug),
+            (
+                str(self.file_path.absolute()),
+                self.model.id,
+                self.from_slug,
+                self.to_slug,
+            ),
         )
         self.conn.commit()
 

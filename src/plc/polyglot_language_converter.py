@@ -6,6 +6,7 @@ from sqlite3 import Connection
 from typing import List
 
 from attrs import Factory, define
+from loguru import logger
 
 from plc.defaults import (
     DIRECTORY_PATH,
@@ -77,15 +78,19 @@ class PolyglotLanguageConverter:
     ):
         num_files_processed = 0
         with self.connect_to_database() as conn:
+            logger.trace(
+                f"Directory path is {self.directory_path}, "
+                f"glob pattern is {self.glob_pattern}"
+            )
             for file_path in self.directory_path.rglob(self.glob_pattern):
                 if max_files and num_files_processed >= max_files:
-                    print(f"Exit: {num_files_processed} files processed.")
+                    logger.info(f"Exit: {num_files_processed} files processed.")
                     break
 
                 if self.skip_file_because_of_name(file_path):
                     continue
 
-                print(f"Processing {file_path}")
+                logger.info(f"Processing {file_path}")
                 num_files_processed += 1
 
                 tasks = [
@@ -110,6 +115,7 @@ class PolyglotLanguageConverter:
         return (
             "old" in str(file_path).lower()
             or "backup" in str(file_path).lower()
+            or "processed" in str(file_path).lower()
             or ".ipynb_checkpoints" in str(file_path).lower()
         )
 

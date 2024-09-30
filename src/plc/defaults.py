@@ -8,7 +8,7 @@ DB_PATH = Path("converted_java_files.db")
 default_models = [
     Model(id="anthropic/claude-3.5-sonnet:beta", slug="claude"),
     Model(id="qwen/qwen-2.5-72b-instruct", slug="qwen"),
-    Model(id="google/gemini-pro-1.5-exp", slug="gemini"),
+    Model(id="google/gemini-pro-1.5", slug="gemini"),
     Model(id="openai/chatgpt-4o-latest", slug="chatgpt"),
 ]
 
