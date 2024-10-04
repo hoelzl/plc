@@ -5,11 +5,15 @@ from plc.model import Model
 
 DIRECTORY_PATH = Path(os.getcwd())
 DB_PATH = Path("converted_java_files.db")
-default_models = [
+all_models = [
     Model(id="anthropic/claude-3.5-sonnet:beta", slug="claude"),
     Model(id="qwen/qwen-2.5-72b-instruct", slug="qwen"),
     Model(id="google/gemini-pro-1.5", slug="gemini"),
     Model(id="openai/chatgpt-4o-latest", slug="chatgpt"),
+]
+
+default_models = [
+    model for model in all_models if model.slug in ["claude", "qwen", "chatgpt"]
 ]
 
 default_initial_prompt_start = """Convert the following notebook in jupytext format from {from_lang} to {to_lang}:

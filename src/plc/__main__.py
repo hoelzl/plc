@@ -94,7 +94,7 @@ def main(
     if models:
         selected_slugs = models.split(",")
         selected_models = [
-            model for model in default_models if model.slug in selected_slugs
+            model for model in all_models if model.slug in selected_slugs
         ]
         if not selected_models:
             raise ValueError(f"No valid models found for the specified slugs: {models}")
