@@ -1,7 +1,11 @@
 import os
 from pathlib import Path
 
+from loguru import logger
+from referencing.jsonschema import specification_with
+
 from plc.model import Model
+from plc.prog_lang_spec import prog_lang_specs
 
 DIRECTORY_PATH = Path(os.getcwd())
 DB_PATH = Path("converted_java_files.db")
@@ -213,14 +217,17 @@ The following messages will contain notebooks for you to convert.
 Please confirm that you understand these instructions before we begin the conversion process."""
 
 
-def get_initial_prompt(from_lang: str, to_lang: str):
+def get_initial_prompt(from_slug: str, to_slug: str):
+    from_lang = prog_lang_specs[from_slug].name
+    to_lang = prog_lang_specs[to_slug].name
     initial_prompt = default_initial_prompt_start.format(
         from_lang=from_lang, to_lang=to_lang
     )
-    language_specific = language_specific_instructions[f"{from_lang}_to_{to_lang}"][
-        "instructions"
-    ]
-    return initial_prompt + language_specific + default_initial_prompt_end
+    logger.trace(f"Getting language-specific instuctions from {from_slug}_to_{to_slug} key.")
+    language_data = language_specific_instructions[f"{from_slug}_to_{to_slug}"]
+    language_specific_instructions_text = language_data["instructions"]
+    logger.trace(f"Found language-specific instructions")
+    return initial_prompt + language_specific_instructions_text + default_initial_prompt_end
 
 
 default_convert_chunk_prompt = """Convert the following chunk of code from {from_lang} to {to_lang}, following the instructions provided earlier:

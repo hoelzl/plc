@@ -15,13 +15,13 @@ from .polyglot_language_converter import PolyglotLanguageConverter
     "--from",
     "from_",
     default="java",
-    type=click.Choice(["cpp", "csharp", "java", "python"]),
+    type=click.Choice(["cpp", "csharp", "java", "python", "typescript"]),
     help="The source language",
 )
 @click.option(
     "--to",
     default="csharp",
-    type=click.Choice(["cpp", "csharp", "java", "python"]),
+    type=click.Choice(["cpp", "csharp", "java", "python", "typescript"]),
     help="The target language",
 )
 @click.option(

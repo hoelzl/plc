@@ -105,9 +105,7 @@ class FileProcessor:
             return []
 
     def build_initial_message(self):
-        content = self.initial_prompt.format(
-            from_lang=self.from_lang, to_lang=self.to_lang
-        )
+        content = self.initial_prompt
         logger.trace(f"Initial message content for {self.model.slug}: {content}")
         return [
             Message(
