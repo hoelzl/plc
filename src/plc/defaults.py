@@ -68,8 +68,12 @@ language_specific_instructions = {
     - Use `PascalCase` for class names in TypeScript code.
     - Convert Python-specific constructs like list comprehensions to equivalent TypeScript code.
     - Ensure that the resulting notebook uses the TypeScript comment character `//` for comments.
-    - Convert pytest tests to Jest tests.
-    - Convert Python mocks to Jest mocks.
+    - Convert pytest tests to Deno tests (in the form `Deno.test("test name", () => { assertEquals(1, 1); });`).
+      - Import the required assertions from the `assert` module: `import { assertEquals } from "jsr:@std/assert";`.
+    - Convert Python mocks to Deno mocks.
+      - Use `spy`, etc. from `jsr:@std/testing/mock` for spies.
+      - Use `stub`, `returnsNext`, etc. from `jsr:@std/testing/mock` for stubs.
+      - Use `assertSpyCall`, `assertSpyCalls`, etc. from `jsr:@std/testing/mock` for assertions.
     - Convert the IPython magic commands to TypeScript comments.
 """
     },
@@ -108,9 +112,13 @@ language_specific_instructions = {
     - Use `PascalCase` for class names in TypeScript code.
     - Convert C++-specific constructs like `std::vector<T>` to equivalent TypeScript code, like `T[]`.
     - Ensure that the resulting notebook uses the TypeScript comment character `//` for comments.
-    - Convert Catch2 tests to Jest tests.
-    - Convert C++ mocks to Jest mocks.
-    - Convert the C++ magic commands to TypeScript comments.
+    - Convert Catch2 tests to Deno tests (in the form `Deno.test("test name", () => { assertEquals(1, 1); });`).
+      - Import the required assertions from the `assert` module: `import { assertEquals } from "jsr:@std/assert";`.
+    - Convert C++ mocks to Deno mocks.
+      - Use `spy`, etc. from `jsr:@std/testing/mock` for spies.
+      - Use `stub`, `returnsNext`, etc. from `jsr:@std/testing/mock` for stubs.
+      - Use `assertSpyCall`, `assertSpyCalls`, etc. from `jsr:@std/testing/mock` for assertions.
+    - Convert IPython magic commands like `%time` to TypeScript comments `// %time`.
 """
     },
     "java_to_python": {
@@ -187,10 +195,14 @@ language_specific_instructions = {
     - Use `PascalCase` for class names in TypeScript code.
     - Convert C#-specific constructs like `List<T>` to equivalent TypeScript code like `T[]`.
     - Ensure that the resulting notebook uses the TypeScript comment character `//` for comments.
-    - Convert xUnit.net tests to Jest tests.
-    - Convert Moq mocks to Jest mocks.
-    - Convert the C# magic command `#r` to a TypeScript comment.
-    - When a notebook contains a cell with `#load "XunitTestRunner.cs"`, import class `TestRunner` from `testrunner`: `import { TestRunner } from "testrunner"`.
+    - Convert xUnit.net tests to Deno tests (in the form `Deno.test("test name", () => { assertEquals(1, 1); });`).
+      - Import the required assertions from the `assert` module: `import { assertEquals } from "jsr:@std/assert";`.
+    - Convert Moq mocks to Deno mocks.
+      - Use `spy`, etc. from `jsr:@std/testing/mock` for spies.
+      - Use `stub`, `returnsNext`, etc. from `jsr:@std/testing/mock` for stubs.
+      - Use `assertSpyCall`, `assertSpyCalls`, etc. from `jsr:@std/testing/mock` for assertions.
+    - Convert C# magic commands like `#r` to TypeScript comments `// #r`.
+    - When a notebook contains a cell with `#load "XunitTestRunner.cs"`, skip the cell.
 """
     },
 }
