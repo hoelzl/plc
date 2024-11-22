@@ -37,6 +37,7 @@ def test_assert_get_initial_prompt_mentions_from_test_framework(lang, framework)
         ("java", "JUnit"),
         ("csharp", "xUnit.net"),
         ("python", "pytest"),
+        ("typescript", "Jest"),
     ],
 )
 def test_assert_get_initial_prompt_mentions_to_test_framework(lang, framework):

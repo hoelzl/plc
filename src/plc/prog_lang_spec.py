@@ -18,6 +18,9 @@ prog_lang_specs: dict[str, ProgLangSpec] = {
     "python": ProgLangSpec(
         slug="python", name="Python", glob_pattern="*.py", suffix=".py"
     ),
+    "typescript": ProgLangSpec(
+        slug="typescript", name="TypeScript", glob_pattern="*.ts", suffix=".ts"
+    ),
 }
 
 

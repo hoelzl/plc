@@ -62,6 +62,17 @@ language_specific_instructions = {
     - Use `#r` for package references where applicable.
 """
     },
+    "python_to_typescript": {
+        "instructions": """
+    - Use `camelCase` for variable and function names in TypeScript code.
+    - Use `PascalCase` for class names in TypeScript code.
+    - Convert Python-specific constructs like list comprehensions to equivalent TypeScript code.
+    - Ensure that the resulting notebook uses the TypeScript comment character `//` for comments.
+    - Convert pytest tests to Jest tests.
+    - Convert Python mocks to Jest mocks.
+    - Convert the IPython magic commands to TypeScript comments.
+"""
+    },
     "cpp_to_python": {
         "instructions": """
     - Use PEP-8 conventions for names.
@@ -89,6 +100,17 @@ language_specific_instructions = {
     - Convert C++ mocks to Moq mocks.
     - Convert the C++ magic commands to appropriate C# equivalents or remove them if they are not applicable.
     - Use `#r` for package references where applicable.
+"""
+    },
+    "cpp_to_typescript": {
+        "instructions": """
+    - Use `camelCase` for variable and function names in TypeScript code.
+    - Use `PascalCase` for class names in TypeScript code.
+    - Convert C++-specific constructs like `std::vector<T>` to equivalent TypeScript code, like `T[]`.
+    - Ensure that the resulting notebook uses the TypeScript comment character `//` for comments.
+    - Convert Catch2 tests to Jest tests.
+    - Convert C++ mocks to Jest mocks.
+    - Convert the C++ magic commands to TypeScript comments.
 """
     },
     "java_to_python": {
@@ -157,6 +179,18 @@ language_specific_instructions = {
         - `%maven org.junit.jupiter:junit-jupiter-engine:5.8.2`
         - `%maven org.junit.jupiter:junit-jupiter-params:5.8.2`
         - `%maven org.junit.platform:junit-platform-launcher:1.9.3`
+"""
+    },
+    "csharp_to_typescript": {
+        "instructions": """
+    - Use `camelCase` for variable and function names in TypeScript code.
+    - Use `PascalCase` for class names in TypeScript code.
+    - Convert C#-specific constructs like `List<T>` to equivalent TypeScript code like `T[]`.
+    - Ensure that the resulting notebook uses the TypeScript comment character `//` for comments.
+    - Convert xUnit.net tests to Jest tests.
+    - Convert Moq mocks to Jest mocks.
+    - Convert the C# magic command `#r` to a TypeScript comment.
+    - When a notebook contains a cell with `#load "XunitTestRunner.cs"`, import class `TestRunner` from `testrunner`: `import { TestRunner } from "testrunner"`.
 """
     },
 }
